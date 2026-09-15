@@ -4,7 +4,6 @@ export type LineItemInput = {
   description: string;
   quantity: number;
   price: number;
-  shipping: number;
 };
 
 export type LineItemRow = LineItemInput & { id: number; line_no: number; rga_id: number };
@@ -20,6 +19,7 @@ export type RgaRow = {
   order_number: string;
   customer_number: string;
   reason: string;
+  shipping: number;
   status: RgaStatus;
   created_at: string;
   decided_at: string | null;
@@ -33,16 +33,17 @@ export function createRga(params: {
   orderNumber: string;
   customerNumber: string;
   reason: string;
+  shipping: number;
   lineItems: LineItemInput[];
 }): number {
   const db = getDb();
   const insertRga = db.prepare(`
-    INSERT INTO rgas (sales_rep_id, order_number, customer_number, reason, status)
-    VALUES (?, ?, ?, ?, 'pending')
+    INSERT INTO rgas (sales_rep_id, order_number, customer_number, reason, shipping, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
   `);
   const insertItem = db.prepare(`
-    INSERT INTO rga_line_items (rga_id, line_no, description, quantity, price, shipping)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO rga_line_items (rga_id, line_no, description, quantity, price)
+    VALUES (?, ?, ?, ?, ?)
   `);
 
   const tx = db.transaction(() => {
@@ -50,11 +51,12 @@ export function createRga(params: {
       params.salesRepId,
       params.orderNumber,
       params.customerNumber,
-      params.reason
+      params.reason,
+      params.shipping
     );
     const rgaId = info.lastInsertRowid as number;
     params.lineItems.forEach((item, idx) => {
-      insertItem.run(rgaId, idx + 1, item.description, item.quantity, item.price, item.shipping);
+      insertItem.run(rgaId, idx + 1, item.description, item.quantity, item.price);
     });
     return rgaId;
   });
@@ -65,10 +67,10 @@ export function createRga(params: {
 const LIST_SELECT = `
   SELECT
     r.id, r.rga_number, r.sales_rep_id, sr.rep_number, sr.name AS rep_name,
-    r.order_number, r.customer_number, r.reason, r.status,
+    r.order_number, r.customer_number, r.reason, r.shipping, r.status,
     r.created_at, r.decided_at, r.decision_note,
     COUNT(li.id) AS item_count,
-    COALESCE(SUM(li.quantity * li.price + li.shipping), 0) AS total_value
+    COALESCE(SUM(li.quantity * li.price), 0) + r.shipping AS total_value
   FROM rgas r
   JOIN sales_reps sr ON sr.id = r.sales_rep_id
   LEFT JOIN rga_line_items li ON li.rga_id = r.id

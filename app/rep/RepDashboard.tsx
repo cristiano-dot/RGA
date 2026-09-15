@@ -24,19 +24,20 @@ type NotificationItem = {
   created_at: string;
 };
 
-type LineItem = { description: string; quantity: string; price: string; shipping: string };
+type LineItem = { description: string; quantity: string; price: string };
 
 const REASON_OPTIONS = [
   "Defective / Damaged",
   "Wrong Item Shipped",
   "Customer Ordered in Error",
+  "Sales Entry Error",
   "Overstock / No Longer Needed",
   "Warranty Return",
   "Pricing Error",
   "Other",
 ];
 
-const emptyLine = (): LineItem => ({ description: "", quantity: "1", price: "", shipping: "0" });
+const emptyLine = (): LineItem => ({ description: "", quantity: "1", price: "" });
 
 function StatusBadge({ status }: { status: RgaListItem["status"] }) {
   const styles = {
@@ -60,6 +61,7 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
   const [reasonCategory, setReasonCategory] = useState(REASON_OPTIONS[0]);
   const [reasonDetails, setReasonDetails] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
+  const [shipping, setShipping] = useState("0");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -104,9 +106,9 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
     setLineItems((items) => (items.length > 1 ? items.filter((_, i) => i !== idx) : items));
   }
 
-  const lineTotal = (li: LineItem) =>
-    (Number(li.quantity) || 0) * (Number(li.price) || 0) + (Number(li.shipping) || 0);
-  const grandTotal = lineItems.reduce((sum, li) => sum + lineTotal(li), 0);
+  const lineTotal = (li: LineItem) => (Number(li.quantity) || 0) * (Number(li.price) || 0);
+  const itemsSubtotal = lineItems.reduce((sum, li) => sum + lineTotal(li), 0);
+  const grandTotal = itemsSubtotal + (Number(shipping) || 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -127,11 +129,11 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
           order_number: orderNumber,
           customer_number: customerNumber,
           reason,
+          shipping: Number(shipping || 0),
           line_items: lineItems.map((li) => ({
             description: li.description,
             quantity: Number(li.quantity),
             price: Number(li.price),
-            shipping: Number(li.shipping || 0),
           })),
         }),
       });
@@ -146,6 +148,7 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
       setReasonCategory(REASON_OPTIONS[0]);
       setReasonDetails("");
       setLineItems([emptyLine()]);
+      setShipping("0");
       loadRgas();
     } finally {
       setSubmitting(false);
@@ -268,8 +271,10 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
               <input
                 className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
                 value={customerNumber}
-                onChange={(e) => setCustomerNumber(e.target.value)}
-                placeholder="e.g. CUST-4410"
+                onChange={(e) => setCustomerNumber(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 4410"
                 required
               />
             </div>
@@ -292,7 +297,8 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium">
-                Additional Details {reasonCategory === "Other" && <span className="text-red-500">*</span>}
+                Additional Details / Lot Number{" "}
+                {reasonCategory === "Other" && <span className="text-red-500">*</span>}
               </label>
               <textarea
                 className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
@@ -323,7 +329,6 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
                     <th className="pb-2 pr-2">Description</th>
                     <th className="w-24 pb-2 pr-2">Qty</th>
                     <th className="w-28 pb-2 pr-2">Unit Price</th>
-                    <th className="w-28 pb-2 pr-2">Shipping</th>
                     <th className="w-24 pb-2 pr-2">Line Total</th>
                     <th className="w-10 pb-2"></th>
                   </tr>
@@ -363,16 +368,6 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
                           required
                         />
                       </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-950"
-                          value={li.shipping}
-                          onChange={(e) => updateLine(idx, { shipping: e.target.value })}
-                        />
-                      </td>
                       <td className="py-2 pr-2 text-right tabular-nums">
                         ${lineTotal(li).toFixed(2)}
                       </td>
@@ -390,18 +385,32 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={4} className="pt-2 text-right text-sm font-medium">
-                      Total
-                    </td>
-                    <td className="pt-2 text-right text-sm font-semibold tabular-nums">
-                      ${grandTotal.toFixed(2)}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
               </table>
+            </div>
+
+            <div className="mt-3 flex flex-col items-end gap-1.5 text-sm">
+              <div className="flex w-56 items-center justify-between">
+                <span className="text-slate-500">Items Subtotal</span>
+                <span className="tabular-nums">${itemsSubtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex w-56 items-center justify-between">
+                <label htmlFor="shipping" className="text-slate-500">
+                  Shipping
+                </label>
+                <input
+                  id="shipping"
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="w-28 rounded-md border border-slate-300 bg-white px-2 py-1 text-right dark:border-slate-700 dark:bg-slate-950"
+                  value={shipping}
+                  onChange={(e) => setShipping(e.target.value)}
+                />
+              </div>
+              <div className="flex w-56 items-center justify-between border-t border-slate-200 pt-1.5 font-semibold dark:border-slate-800">
+                <span>Total</span>
+                <span className="tabular-nums">${grandTotal.toFixed(2)}</span>
+              </div>
             </div>
           </div>
 

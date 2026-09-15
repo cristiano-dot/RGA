@@ -24,8 +24,8 @@ function createConnection(): Database.Database {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       rep_number TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      password_hash TEXT NOT NULL
+      email TEXT UNIQUE NOT NULL,
+      google_sub TEXT
     );
 
     CREATE TABLE IF NOT EXISTS admins (
@@ -42,6 +42,7 @@ function createConnection(): Database.Database {
       order_number TEXT NOT NULL,
       customer_number TEXT NOT NULL,
       reason TEXT NOT NULL,
+      shipping REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
       decided_at TEXT,
@@ -55,8 +56,7 @@ function createConnection(): Database.Database {
       line_no INTEGER NOT NULL,
       description TEXT NOT NULL,
       quantity REAL NOT NULL,
-      price REAL NOT NULL,
-      shipping REAL NOT NULL DEFAULT 0
+      price REAL NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS notifications (
@@ -78,16 +78,23 @@ function createConnection(): Database.Database {
   return db;
 }
 
+// Demo seed data only — this file lives in the gitignored data/ directory and
+// is rebuilt from scratch on first run. If you already have a data/rga.db
+// from before this schema changed (shipping moved off line items, sales reps
+// switched from password auth to Google sign-in), delete the data/ folder
+// once so it re-seeds cleanly.
 function seed(db: Database.Database) {
   const repCount = db.prepare("SELECT COUNT(*) AS c FROM sales_reps").get() as { c: number };
   if (repCount.c === 0) {
-    const hash = bcrypt.hashSync("demo123", 10);
     const insert = db.prepare(
-      "INSERT INTO sales_reps (rep_number, name, email, password_hash) VALUES (?, ?, ?, ?)"
+      "INSERT INTO sales_reps (rep_number, name, email) VALUES (?, ?, ?)"
     );
-    insert.run("REP-101", "Jamie Rivera", "jamie.rivera@example.com", hash);
-    insert.run("REP-102", "Alex Chen", "alex.chen@example.com", hash);
-    insert.run("REP-103", "Morgan Blake", "morgan.blake@example.com", hash);
+    insert.run("REP-101", "Jamie Rivera", "jamie.rivera@example.com");
+    insert.run("REP-102", "Alex Chen", "alex.chen@example.com");
+    insert.run("REP-103", "Morgan Blake", "morgan.blake@example.com");
+    // Seeded so the person who requested this demo can sign in with their
+    // own Google account right away. Edit/remove freely.
+    insert.run("REP-104", "Cristiano", "cristiano@smithcorona.com");
   }
 
   const adminCount = db.prepare("SELECT COUNT(*) AS c FROM admins").get() as { c: number };
@@ -98,9 +105,15 @@ function seed(db: Database.Database) {
     ).run("admin", "RGA Administrator", hash);
   }
 
-  const counterCount = db.prepare("SELECT COUNT(*) AS c FROM counters WHERE name = 'rga_number'").get() as { c: number };
-  if (counterCount.c === 0) {
+  const rgaCounter = db.prepare("SELECT COUNT(*) AS c FROM counters WHERE name = 'rga_number'").get() as { c: number };
+  if (rgaCounter.c === 0) {
     db.prepare("INSERT INTO counters (name, value) VALUES ('rga_number', 1000)").run();
+  }
+
+  const repCounter = db.prepare("SELECT COUNT(*) AS c FROM counters WHERE name = 'rep_number'").get() as { c: number };
+  if (repCounter.c === 0) {
+    // Next auto-provisioned Google sign-in (see lib/reps.ts) gets REP-105+.
+    db.prepare("INSERT INTO counters (name, value) VALUES ('rep_number', 104)").run();
   }
 }
 
@@ -116,4 +129,11 @@ export function nextRgaNumber(db: Database.Database): string {
     .prepare("UPDATE counters SET value = value + 1 WHERE name = 'rga_number' RETURNING value")
     .get() as { value: number };
   return `RGA-${row.value}`;
+}
+
+export function nextRepNumber(db: Database.Database): string {
+  const row = db
+    .prepare("UPDATE counters SET value = value + 1 WHERE name = 'rep_number' RETURNING value")
+    .get() as { value: number };
+  return `REP-${row.value}`;
 }

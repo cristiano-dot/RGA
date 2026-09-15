@@ -48,7 +48,8 @@ export default function RgaDetail({ rga, items }: { rga: RgaRow; items: LineItem
     }
   }
 
-  const total = items.reduce((sum, i) => sum + i.quantity * i.price + i.shipping, 0);
+  const itemsSubtotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+  const total = itemsSubtotal + rga.shipping;
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
@@ -93,7 +94,6 @@ export default function RgaDetail({ rga, items }: { rga: RgaRow; items: LineItem
                   <th className="py-2 pr-2">Description</th>
                   <th className="py-2 pr-2">Qty</th>
                   <th className="py-2 pr-2">Unit Price</th>
-                  <th className="py-2 pr-2">Shipping</th>
                   <th className="py-2 pr-2 text-right">Line Total</th>
                 </tr>
               </thead>
@@ -103,24 +103,28 @@ export default function RgaDetail({ rga, items }: { rga: RgaRow; items: LineItem
                     <td className="py-2 pr-2">{li.description}</td>
                     <td className="py-2 pr-2">{li.quantity}</td>
                     <td className="py-2 pr-2">${li.price.toFixed(2)}</td>
-                    <td className="py-2 pr-2">${li.shipping.toFixed(2)}</td>
                     <td className="py-2 pr-2 text-right tabular-nums">
-                      ${(li.quantity * li.price + li.shipping).toFixed(2)}
+                      ${(li.quantity * li.price).toFixed(2)}
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4} className="pt-2 text-right text-sm font-medium">
-                    Total
-                  </td>
-                  <td className="pt-2 text-right text-sm font-semibold tabular-nums">
-                    ${total.toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
             </table>
+          </div>
+
+          <div className="mt-3 flex flex-col items-end gap-1.5 text-sm">
+            <div className="flex w-56 items-center justify-between">
+              <span className="text-slate-500">Items Subtotal</span>
+              <span className="tabular-nums">${itemsSubtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex w-56 items-center justify-between">
+              <span className="text-slate-500">Shipping</span>
+              <span className="tabular-nums">${rga.shipping.toFixed(2)}</span>
+            </div>
+            <div className="flex w-56 items-center justify-between border-t border-slate-200 pt-1.5 font-semibold dark:border-slate-800">
+              <span>Total</span>
+              <span className="tabular-nums">${total.toFixed(2)}</span>
+            </div>
           </div>
         </div>
 
