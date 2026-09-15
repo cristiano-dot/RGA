@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { createSession, getCurrentUser } from "@/lib/auth";
 import { changeOwnPassword, UserValidationError } from "@/lib/users";
 
 export async function POST(req: Request) {
@@ -19,6 +19,11 @@ export async function POST(req: Request) {
 
   try {
     changeOwnPassword({ userId: user.id, currentPassword, newPassword });
+    // Sessions are bound to the password they were issued under, so changing
+    // it retires every existing session — including this one. Issue a fresh
+    // cookie so the person who just changed their own password stays signed
+    // in while anyone else holding an old cookie is kicked out.
+    await createSession(user.id);
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof UserValidationError) {

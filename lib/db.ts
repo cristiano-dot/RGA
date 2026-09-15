@@ -47,6 +47,11 @@ function createConnection(): Database.Database {
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     );
 
+    -- Reset tokens are looked up by hash on every reset attempt and swept by
+    -- user; without these the lookup is a full scan of the table.
+    CREATE INDEX IF NOT EXISTS idx_reset_tokens_hash ON password_reset_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_reset_tokens_user ON password_reset_tokens(user_id);
+
     CREATE TABLE IF NOT EXISTS rgas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       rga_number TEXT UNIQUE,

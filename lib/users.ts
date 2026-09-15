@@ -192,7 +192,15 @@ export function changeOwnPassword(params: {
     throw new UserValidationError("New password must be at least 6 characters.");
   }
   const hash = bcrypt.hashSync(params.newPassword, 10);
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, params.userId);
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, params.userId);
+    // Any reset link that was already in flight is moot now, and shouldn't
+    // stay usable by whoever received that email.
+    db.prepare(
+      "UPDATE password_reset_tokens SET used_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ? AND used_at IS NULL"
+    ).run(params.userId);
+  });
+  tx();
 }
 
 export function setPasswordHash(userId: number, passwordHash: string) {
