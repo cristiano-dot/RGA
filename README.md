@@ -5,7 +5,7 @@ A demo web app for requesting and approving Return Goods Authorizations (RGAs).
 ## What's here
 
 **Sales rep side** (`/login` → `/rep`)
-- Sign in with your Google work account (no separate password).
+- Sign in with email + password.
 - Submit an RGA request: rep number (dropdown), original order number, numeric
   customer number, reason for return (category + additional details / lot
   number), one or more line items (description, quantity, unit price), and a
@@ -34,9 +34,9 @@ A demo web app for requesting and approving Return Goods Authorizations (RGAs).
 - Next.js 16 (App Router) + TypeScript + Tailwind CSS
 - SQLite via `better-sqlite3` — zero-setup, file-based, stored at `data/rga.db`
   (gitignored; recreated with demo seed data automatically on first run)
-- Auth is demo-grade: HTTP-only signed cookies (HMAC), separate sessions for
-  reps and admins. Reps authenticate via Google OAuth (see setup below);
-  admins use a simple username/password.
+- Auth is demo-grade: HTTP-only signed cookies (HMAC) + bcrypt-hashed
+  passwords, separate sessions for reps and admins. No external auth
+  provider or setup needed to try this out.
 - "Notify the rep" is implemented as an in-app notification feed rather than
   real email/SMS — swap in a provider (e.g. Resend, SendGrid, Twilio) behind
   the same `notifications` table when this moves past the demo stage.
@@ -50,40 +50,9 @@ npm run dev
 
 Then open http://localhost:3000.
 
-### Setting up Google sign-in for reps
-
-Reps sign in with Google instead of a password. Until you configure it,
-`/login` shows a "not configured yet" notice instead of a broken button.
-
-1. In [Google Cloud Console](https://console.cloud.google.com/), create (or
-   pick) a project, then go to **APIs & Services → OAuth consent screen** and
-   configure it (Internal if you're on Google Workspace and only want your
-   org signing in; External + add yourself as a test user otherwise).
-2. Go to **APIs & Services → Credentials → Create Credentials → OAuth client
-   ID**, type **Web application**.
-3. Add an authorized redirect URI:
-   - Dev: `http://localhost:3000/api/auth/google/callback`
-   - Prod: `https://your-domain.com/api/auth/google/callback`
-4. Copy `.env.example` to `.env.local` and fill in the client ID/secret:
-   ```bash
-   cp .env.example .env.local
-   ```
-5. (Optional) Set `GOOGLE_WORKSPACE_DOMAIN` (e.g. `smithcorona.com`) to let
-   any employee with a Google account on that domain sign in and get
-   auto-added as a sales rep on first login — no pre-registration needed. If
-   you leave it unset, a Google account can only sign in if its email
-   already matches a row in `sales_reps` (an admin would need to add new
-   reps directly in the database for now — see Notes below).
-6. Restart `npm run dev` after editing `.env.local`.
-
-The seed data already includes `REP-104` for `cristiano@smithcorona.com` (the
-email tied to this session) so that account can sign in immediately once
-Google OAuth is configured, even without `GOOGLE_WORKSPACE_DOMAIN` set.
-
 ### Demo credentials
 
-**Sales reps:** sign in with Google using one of the seeded emails, or set
-`GOOGLE_WORKSPACE_DOMAIN` and use any account on that domain:
+**Sales reps** (any of these, password `demo123`):
 - `REP-101` — jamie.rivera@example.com
 - `REP-102` — alex.chen@example.com
 - `REP-103` — morgan.blake@example.com
@@ -94,7 +63,7 @@ Google OAuth is configured, even without `GOOGLE_WORKSPACE_DOMAIN` set.
 
 ## Data model
 
-- `sales_reps` — rep number, name, email (Google identity), Google subject id
+- `sales_reps` — rep number, name, email, password
 - `admins` — username, name, password
 - `rgas` — order #, customer #, reason, shipping, status, RGA number
   (assigned on approval), timestamps
@@ -108,16 +77,19 @@ Google OAuth is configured, even without `GOOGLE_WORKSPACE_DOMAIN` set.
 
 ## Notes / next steps for a production version
 
-- Add real admin UI for managing the rep roster (add/remove reps, view who's
-  been auto-provisioned via `GOOGLE_WORKSPACE_DOMAIN`) instead of editing the
-  database directly.
+- Swap the demo password auth for something stronger (SSO, Google OAuth —
+  this app had a Google sign-in flow at one point and can go back to it;
+  a real identity provider, etc.) when ready. For now it's back to
+  email/password so anyone can try it out with zero external setup.
 - Wire the notification table up to real email/SMS delivery.
 - Give admins an in-app notification feed too — right now they only learn
   about a new rep comment via the unread dot on the request list, not a push
   notification.
+- Add rep account management (self-service password reset, admin-managed
+  rep roster) instead of the seeded demo reps.
 - Move from SQLite to a hosted database (Postgres, etc.) for multi-instance
   deployment.
-- If you already ran this app before the schema changes (shipping moved off
-  line items, rep auth switched from password to Google, new activity/
+- If you already ran this app before a schema change (shipping moved off
+  line items, rep auth switched between password/Google, new activity/
   comments table), delete the local `data/` folder once so it re-seeds
-  cleanly on the new schema.
+  cleanly on the current schema.
