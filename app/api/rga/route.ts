@@ -60,13 +60,16 @@ export async function POST(req: Request) {
     lineItems.push({ description, quantity, price });
   }
 
+  const targetRepId = Number(sales_rep_id);
   const rgaId = createRga({
-    salesRepId: Number(sales_rep_id),
+    salesRepId: targetRepId,
     orderNumber: String(order_number).trim(),
     customerNumber,
     reason: String(reason).trim(),
     shipping: shippingAmount,
     lineItems,
+    submittedByName: `${rep.name} (${rep.rep_number})`,
+    submittedOnBehalf: targetRepId !== rep.id,
   });
 
   return NextResponse.json({ ok: true, id: rgaId });

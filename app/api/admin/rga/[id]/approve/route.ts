@@ -8,7 +8,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
   const { id } = await ctx.params;
   try {
-    const result = decideRga({ rgaId: Number(id), adminId: admin.id, approve: true });
+    const result = decideRga({
+      rgaId: Number(id),
+      adminId: admin.id,
+      adminName: admin.name,
+      approve: true,
+    });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });

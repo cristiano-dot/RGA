@@ -17,6 +17,7 @@ type RgaRow = {
   created_at: string;
   item_count: number;
   total_value: number;
+  has_new_rep_comment: number;
 };
 
 const SORT_COLUMNS: { key: string; label: string }[] = [
@@ -183,8 +184,14 @@ export default function AdminDashboard({ admin }: { admin: Admin }) {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/${r.id}`}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
                     >
+                      {r.has_new_rep_comment ? (
+                        <span
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"
+                          title="New comment from rep"
+                        />
+                      ) : null}
                       Review
                     </Link>
                   </td>

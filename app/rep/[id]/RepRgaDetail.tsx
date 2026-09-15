@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { LineItemRow, RgaRow } from "@/lib/rga";
 import ActivityTimeline, { type ActivityItem } from "@/components/ActivityTimeline";
 
-export default function RgaDetail({
+export default function RepRgaDetail({
   rga,
   items,
   activity,
@@ -15,55 +13,13 @@ export default function RgaDetail({
   items: LineItemRow[];
   activity: ActivityItem[];
 }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [rejectNote, setRejectNote] = useState("");
-  const [showRejectBox, setShowRejectBox] = useState(false);
-
-  async function approve() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/rga/${rga.id}/approve`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to approve.");
-        return;
-      }
-      router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reject() {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/admin/rga/${rga.id}/reject`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: rejectNote }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to reject.");
-        return;
-      }
-      router.refresh();
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const itemsSubtotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
   const total = itemsSubtotal + rga.shipping;
 
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
-      <Link href="/admin" className="text-sm text-slate-500 hover:underline">
-        ← Back to all requests
+      <Link href="/rep" className="text-sm text-slate-500 hover:underline">
+        ← Back to my requests
       </Link>
 
       <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
@@ -73,7 +29,8 @@ export default function RgaDetail({
               {rga.rga_number ? rga.rga_number : `RGA Request #${rga.id}`}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Submitted {new Date(rga.created_at).toLocaleString()} by {rga.rep_number} — {rga.rep_name}
+              Submitted {new Date(rga.created_at).toLocaleString()} for {rga.rep_number} —{" "}
+              {rga.rep_name}
             </p>
           </div>
           <StatusBadge status={rga.status} />
@@ -137,55 +94,7 @@ export default function RgaDetail({
           </div>
         </div>
 
-        {rga.status === "pending" ? (
-          <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
-            {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-            {!showRejectBox ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={approve}
-                  disabled={busy}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-60"
-                >
-                  {busy ? "Working..." : "Approve & Issue RGA #"}
-                </button>
-                <button
-                  onClick={() => setShowRejectBox(true)}
-                  disabled={busy}
-                  className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
-                >
-                  Reject
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium">Reason for rejection (optional)</label>
-                <textarea
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
-                  rows={2}
-                  value={rejectNote}
-                  onChange={(e) => setRejectNote(e.target.value)}
-                />
-                <div className="flex gap-3">
-                  <button
-                    onClick={reject}
-                    disabled={busy}
-                    className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:opacity-60"
-                  >
-                    {busy ? "Working..." : "Confirm Rejection"}
-                  </button>
-                  <button
-                    onClick={() => setShowRejectBox(false)}
-                    disabled={busy}
-                    className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
+        {rga.status !== "pending" && (
           <div className="mt-8 border-t border-slate-200 pt-6 text-sm dark:border-slate-800">
             <p>
               Decided {rga.decided_at ? new Date(rga.decided_at).toLocaleString() : ""}
@@ -201,7 +110,7 @@ export default function RgaDetail({
         )}
 
         <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
-          <ActivityTimeline activity={activity} postCommentUrl={`/api/admin/rga/${rga.id}/comments`} />
+          <ActivityTimeline activity={activity} postCommentUrl={`/api/rga/${rga.id}/comments`} />
         </div>
       </div>
     </div>

@@ -47,7 +47,8 @@ function createConnection(): Database.Database {
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
       decided_at TEXT,
       decided_by INTEGER REFERENCES admins(id),
-      decision_note TEXT
+      decision_note TEXT,
+      admin_last_seen_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS rga_line_items (
@@ -57,6 +58,16 @@ function createConnection(): Database.Database {
       description TEXT NOT NULL,
       quantity REAL NOT NULL,
       price REAL NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS rga_activity (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rga_id INTEGER NOT NULL REFERENCES rgas(id) ON DELETE CASCADE,
+      type TEXT NOT NULL, -- submitted | approved | rejected | comment
+      actor_type TEXT NOT NULL, -- rep | admin
+      actor_name TEXT NOT NULL,
+      message TEXT,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     );
 
     CREATE TABLE IF NOT EXISTS notifications (
@@ -80,9 +91,9 @@ function createConnection(): Database.Database {
 
 // Demo seed data only — this file lives in the gitignored data/ directory and
 // is rebuilt from scratch on first run. If you already have a data/rga.db
-// from before this schema changed (shipping moved off line items, sales reps
-// switched from password auth to Google sign-in), delete the data/ folder
-// once so it re-seeds cleanly.
+// from an earlier schema (shipping moved off line items, sales reps switched
+// from password auth to Google sign-in, or the new activity/comments table),
+// delete the data/ folder once so it re-seeds cleanly.
 function seed(db: Database.Database) {
   const repCount = db.prepare("SELECT COUNT(*) AS c FROM sales_reps").get() as { c: number };
   if (repCount.c === 0) {

@@ -1,4 +1,5 @@
 import { getDb, nextRgaNumber } from "./db";
+import { logActivity } from "./activity";
 
 export type LineItemInput = {
   description: string;
@@ -24,6 +25,8 @@ export type RgaRow = {
   created_at: string;
   decided_at: string | null;
   decision_note: string | null;
+  admin_last_seen_at: string | null;
+  has_new_rep_comment: number;
   item_count: number;
   total_value: number;
 };
@@ -35,6 +38,8 @@ export function createRga(params: {
   reason: string;
   shipping: number;
   lineItems: LineItemInput[];
+  submittedByName: string;
+  submittedOnBehalf: boolean;
 }): number {
   const db = getDb();
   const insertRga = db.prepare(`
@@ -58,6 +63,13 @@ export function createRga(params: {
     params.lineItems.forEach((item, idx) => {
       insertItem.run(rgaId, idx + 1, item.description, item.quantity, item.price);
     });
+    logActivity(db, {
+      rgaId,
+      type: "submitted",
+      actorType: "rep",
+      actorName: params.submittedByName,
+      message: params.submittedOnBehalf ? "Filed on behalf of the selected rep number." : null,
+    });
     return rgaId;
   });
 
@@ -68,9 +80,14 @@ const LIST_SELECT = `
   SELECT
     r.id, r.rga_number, r.sales_rep_id, sr.rep_number, sr.name AS rep_name,
     r.order_number, r.customer_number, r.reason, r.shipping, r.status,
-    r.created_at, r.decided_at, r.decision_note,
+    r.created_at, r.decided_at, r.decision_note, r.admin_last_seen_at,
     COUNT(li.id) AS item_count,
-    COALESCE(SUM(li.quantity * li.price), 0) + r.shipping AS total_value
+    COALESCE(SUM(li.quantity * li.price), 0) + r.shipping AS total_value,
+    EXISTS (
+      SELECT 1 FROM rga_activity a
+      WHERE a.rga_id = r.id AND a.type = 'comment' AND a.actor_type = 'rep'
+        AND a.created_at > COALESCE(r.admin_last_seen_at, '0000-01-01T00:00:00.000Z')
+    ) AS has_new_rep_comment
   FROM rgas r
   JOIN sales_reps sr ON sr.id = r.sales_rep_id
   LEFT JOIN rga_line_items li ON li.rga_id = r.id
@@ -131,9 +148,19 @@ export function getRgaWithItems(id: number): { rga: RgaRow; items: LineItemRow[]
   return { rga, items };
 }
 
+export function getRgaForRep(
+  id: number,
+  salesRepId: number
+): { rga: RgaRow; items: LineItemRow[] } | null {
+  const result = getRgaWithItems(id);
+  if (!result || result.rga.sales_rep_id !== salesRepId) return null;
+  return result;
+}
+
 export function decideRga(params: {
   rgaId: number;
   adminId: number;
+  adminName: string;
   approve: boolean;
   note?: string;
 }): { status: RgaStatus; rgaNumber: string | null; salesRepId: number } {
@@ -168,6 +195,14 @@ export function decideRga(params: {
       INSERT INTO notifications (sales_rep_id, rga_id, message)
       VALUES (?, ?, ?)
     `).run(current.sales_rep_id, params.rgaId, message);
+
+    logActivity(db, {
+      rgaId: params.rgaId,
+      type: status === "approved" ? "approved" : "rejected",
+      actorType: "admin",
+      actorName: params.adminName,
+      message: params.note ?? null,
+    });
 
     return { status, rgaNumber, salesRepId: current.sales_rep_id };
   });

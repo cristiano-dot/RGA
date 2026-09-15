@@ -11,7 +11,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const note = typeof body?.note === "string" ? body.note.trim() : undefined;
 
   try {
-    const result = decideRga({ rgaId: Number(id), adminId: admin.id, approve: false, note });
+    const result = decideRga({
+      rgaId: Number(id),
+      adminId: admin.id,
+      adminName: admin.name,
+      approve: false,
+      note,
+    });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });

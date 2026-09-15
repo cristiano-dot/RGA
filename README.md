@@ -22,6 +22,12 @@ A demo web app for requesting and approving Return Goods Authorizations (RGAs).
 - Open a request to see full line-item detail plus the items subtotal,
   shipping, and total, then approve (which assigns the next RGA number and
   notifies the rep) or reject (with an optional note).
+- Every request has a History & Comments thread: submission, approval/
+  rejection, and free-text comments from either side are shown in one
+  timeline, so admin and rep can go back and forth on a request (e.g. "what's
+  the lot number?"). A blue dot on the admin list flags requests with an
+  unread rep comment; admin replies notify the rep the same way a decision
+  does.
 
 ## Stack
 
@@ -94,7 +100,11 @@ Google OAuth is configured, even without `GOOGLE_WORKSPACE_DOMAIN` set.
   (assigned on approval), timestamps
 - `rga_line_items` — description, quantity, price per line (shipping lives on
   the parent RGA, not per line)
-- `notifications` — messages sent to a rep when their RGA is decided
+- `rga_activity` — unified audit trail + comment thread per RGA (submitted /
+  approved / rejected system entries, plus free-text comments from rep or
+  admin)
+- `notifications` — messages sent to a rep when their RGA is decided or an
+  admin comments on it
 
 ## Notes / next steps for a production version
 
@@ -102,9 +112,12 @@ Google OAuth is configured, even without `GOOGLE_WORKSPACE_DOMAIN` set.
   been auto-provisioned via `GOOGLE_WORKSPACE_DOMAIN`) instead of editing the
   database directly.
 - Wire the notification table up to real email/SMS delivery.
-- Add audit history / comments per RGA for back-and-forth with the rep.
+- Give admins an in-app notification feed too — right now they only learn
+  about a new rep comment via the unread dot on the request list, not a push
+  notification.
 - Move from SQLite to a hosted database (Postgres, etc.) for multi-instance
   deployment.
 - If you already ran this app before the schema changes (shipping moved off
-  line items, rep auth switched from password to Google), delete the local
-  `data/` folder once so it re-seeds cleanly on the new schema.
+  line items, rep auth switched from password to Google, new activity/
+  comments table), delete the local `data/` folder once so it re-seeds
+  cleanly on the new schema.
