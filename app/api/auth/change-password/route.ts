@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentRep } from "@/lib/auth";
-import { changeOwnPassword, RepValidationError } from "@/lib/reps";
+import { getCurrentUser } from "@/lib/auth";
+import { changeOwnPassword, UserValidationError } from "@/lib/users";
 
 export async function POST(req: Request) {
-  const rep = await getCurrentRep();
-  if (!rep) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const currentPassword = String(body?.current_password ?? "");
@@ -18,10 +18,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    changeOwnPassword({ repId: rep.id, currentPassword, newPassword });
+    changeOwnPassword({ userId: user.id, currentPassword, newPassword });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    if (err instanceof RepValidationError) {
+    if (err instanceof UserValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     throw err;

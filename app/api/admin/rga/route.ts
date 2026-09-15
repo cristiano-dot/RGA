@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCurrentAdmin } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { listAllRgas } from "@/lib/rga";
 
 export async function GET(req: Request) {
-  const admin = await getCurrentAdmin();
-  if (!admin) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user || !hasRole(user, "admin")) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
 
   const url = new URL(req.url);
   const sort = url.searchParams.get("sort") ?? "created_at";

@@ -6,8 +6,7 @@ import { getDb } from "./db";
 // For production, swap for a real auth provider / signed JWT library.
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-insecure-secret-change-me";
 
-export const REP_COOKIE = "rga_rep_session";
-export const ADMIN_COOKIE = "rga_admin_session";
+export const SESSION_COOKIE = "rga_session";
 
 type SessionPayload = { id: number; issuedAt: number };
 
@@ -33,9 +32,9 @@ function verify(token: string | undefined): SessionPayload | null {
 
 const MAX_AGE = 60 * 60 * 8; // 8 hours
 
-export async function createRepSession(repId: number) {
+export async function createSession(userId: number) {
   const jar = await cookies();
-  jar.set(REP_COOKIE, sign({ id: repId, issuedAt: Date.now() }), {
+  jar.set(SESSION_COOKIE, sign({ id: userId, issuedAt: Date.now() }), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -44,58 +43,43 @@ export async function createRepSession(repId: number) {
   });
 }
 
-export async function createAdminSession(adminId: number) {
+export async function clearSession() {
   const jar = await cookies();
-  jar.set(ADMIN_COOKIE, sign({ id: adminId, issuedAt: Date.now() }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: MAX_AGE,
-  });
+  jar.delete(SESSION_COOKIE);
 }
 
-export async function clearRepSession() {
-  const jar = await cookies();
-  jar.delete(REP_COOKIE);
-}
+export type Role = "admin" | "rep";
 
-export async function clearAdminSession() {
-  const jar = await cookies();
-  jar.delete(ADMIN_COOKIE);
-}
-
-export type SalesRep = {
+export type CurrentUser = {
   id: number;
-  rep_number: string;
   name: string;
   email: string;
+  rep_number: string | null;
+  roles: Role[];
 };
 
-export type Admin = {
-  id: number;
-  username: string;
-  name: string;
-};
-
-export async function getCurrentRep(): Promise<SalesRep | null> {
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   const jar = await cookies();
-  const payload = verify(jar.get(REP_COOKIE)?.value);
+  const payload = verify(jar.get(SESSION_COOKIE)?.value);
   if (!payload) return null;
+
   const db = getDb();
-  const rep = db
-    .prepare("SELECT id, rep_number, name, email FROM sales_reps WHERE id = ? AND is_active = 1")
-    .get(payload.id) as SalesRep | undefined;
-  return rep ?? null;
+  const user = db
+    .prepare(
+      "SELECT id, name, email, rep_number FROM users WHERE id = ? AND is_active = 1"
+    )
+    .get(payload.id) as
+    | { id: number; name: string; email: string; rep_number: string | null }
+    | undefined;
+  if (!user) return null;
+
+  const roles = db
+    .prepare("SELECT role FROM user_roles WHERE user_id = ?")
+    .all(user.id) as { role: Role }[];
+
+  return { ...user, roles: roles.map((r) => r.role) };
 }
 
-export async function getCurrentAdmin(): Promise<Admin | null> {
-  const jar = await cookies();
-  const payload = verify(jar.get(ADMIN_COOKIE)?.value);
-  if (!payload) return null;
-  const db = getDb();
-  const admin = db
-    .prepare("SELECT id, username, name FROM admins WHERE id = ?")
-    .get(payload.id) as Admin | undefined;
-  return admin ?? null;
+export function hasRole(user: CurrentUser | null, role: Role): boolean {
+  return !!user?.roles.includes(role);
 }

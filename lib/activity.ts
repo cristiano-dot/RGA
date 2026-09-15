@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { getDb } from "./db";
+import { emailUser } from "./notify";
 
 export type ActivityType = "submitted" | "approved" | "rejected" | "comment";
 export type ActorType = "rep" | "admin";
@@ -37,7 +38,7 @@ export function listActivity(rgaId: number): ActivityRow[] {
     .all(rgaId) as ActivityRow[];
 }
 
-export function addComment(params: {
+export async function addComment(params: {
   rgaId: number;
   actorType: ActorType;
   actorName: string;
@@ -62,19 +63,21 @@ export function addComment(params: {
         .get(params.rgaId) as { sales_rep_id: number; rga_number: string | null } | undefined;
       if (rga) {
         const label = rga.rga_number ?? `request #${params.rgaId}`;
+        const message = `New comment on ${label} from ${params.actorName}: "${params.message}"`;
         db.prepare(
           `INSERT INTO notifications (sales_rep_id, rga_id, message)
            VALUES (?, ?, ?)`
-        ).run(
-          rga.sales_rep_id,
-          params.rgaId,
-          `New comment on ${label} from ${params.actorName}: "${params.message}"`
-        );
+        ).run(rga.sales_rep_id, params.rgaId, message);
+        return { notifyUserId: rga.sales_rep_id, label, message };
       }
     }
+    return null;
   });
 
-  tx();
+  const toNotify = tx();
+  if (toNotify) {
+    await emailUser(toNotify.notifyUserId, `New comment on ${toNotify.label}`, toNotify.message);
+  }
 }
 
 export function markSeenByAdmin(rgaId: number) {

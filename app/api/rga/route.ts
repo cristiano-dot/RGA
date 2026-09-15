@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
-import { getCurrentRep } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { createRga, listRgasForRep, type LineItemInput } from "@/lib/rga";
 
 export async function GET() {
-  const rep = await getCurrentRep();
-  if (!rep) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user || !hasRole(user, "rep")) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
 
-  const rgas = listRgasForRep(rep.id);
+  const rgas = listRgasForRep(user.id);
   return NextResponse.json({ rgas });
 }
 
 export async function POST(req: Request) {
-  const rep = await getCurrentRep();
-  if (!rep) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user || !hasRole(user, "rep")) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
 
   const body = await req.json();
   const { sales_rep_id, order_number, customer_number, reason, shipping, line_items } = body ?? {};
@@ -68,8 +72,8 @@ export async function POST(req: Request) {
     reason: String(reason).trim(),
     shipping: shippingAmount,
     lineItems,
-    submittedByName: `${rep.name} (${rep.rep_number})`,
-    submittedOnBehalf: targetRepId !== rep.id,
+    submittedByName: `${user.name} (${user.rep_number})`,
+    submittedOnBehalf: targetRepId !== user.id,
   });
 
   return NextResponse.json({ ok: true, id: rgaId });

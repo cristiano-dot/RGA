@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,7 +26,8 @@ export default function LoginPage() {
         setError(data.error ?? "Login failed.");
         return;
       }
-      router.push("/rep");
+      const roles: string[] = data.roles ?? [];
+      router.push(roles.includes("rep") ? "/rep" : "/admin");
       router.refresh();
     } finally {
       setLoading(false);
@@ -35,9 +37,10 @@ export default function LoginPage() {
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold tracking-tight">Sales Rep Login</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Sign In</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Sign in to submit and track RGA requests.
+          Sign in to the RGA Portal. Reps and admins use the same login — you&apos;ll land on
+          the right dashboard for your account.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -54,7 +57,12 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium">Password</label>
+              <Link href="/forgot-password" className="text-xs text-slate-500 underline">
+                Forgot password?
+              </Link>
+            </div>
             <input
               type="password"
               className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
@@ -76,8 +84,9 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 rounded-md bg-slate-100 p-3 text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-          Demo credentials: any seeded rep email (e.g. jamie.rivera@example.com), password{" "}
-          <code>demo123</code>.
+          Demo credentials: jamie.rivera@example.com (rep), admin@example.com (admin), or
+          cristiano@smithcorona.com (both roles) — password <code>demo123</code> for reps,{" "}
+          <code>admin123</code> for the admin account.
         </p>
       </div>
     </div>

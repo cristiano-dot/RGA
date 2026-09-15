@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
-import { getCurrentRep } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { getRgaForRep } from "@/lib/rga";
 import { addComment } from "@/lib/activity";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const rep = await getCurrentRep();
-  if (!rep) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user || !hasRole(user, "rep")) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
 
   const { id } = await ctx.params;
   const rgaId = Number(id);
-  const result = getRgaForRep(rgaId, rep.id);
+  const result = getRgaForRep(rgaId, user.id);
   if (!result) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -18,10 +20,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "Comment can't be empty." }, { status: 400 });
   }
 
-  addComment({
+  await addComment({
     rgaId,
     actorType: "rep",
-    actorName: `${rep.name} (${rep.rep_number})`,
+    actorName: `${user.name} (${user.rep_number})`,
     message,
   });
 

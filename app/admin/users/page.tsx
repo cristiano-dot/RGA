@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, hasRole } from "@/lib/auth";
-import AdminDashboard from "./AdminDashboard";
+import AdminUsers from "./AdminUsers";
 
-export default async function AdminPage() {
+export default async function AdminUsersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!hasRole(user, "admin")) redirect("/rep");
 
-  return <AdminDashboard user={user} />;
+  return <AdminUsers currentUser={user} />;
 }

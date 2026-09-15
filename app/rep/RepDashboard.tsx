@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type Rep = { id: number; rep_number: string; name: string };
+type CurrentUser = { id: number; name: string; email: string; rep_number: string | null; roles: string[] };
 type RgaListItem = {
   id: number;
   rga_number: string | null;
@@ -53,10 +54,10 @@ function StatusBadge({ status }: { status: RgaListItem["status"] }) {
   );
 }
 
-export default function RepDashboard({ rep }: { rep: Rep }) {
+export default function RepDashboard({ user }: { user: CurrentUser }) {
   const router = useRouter();
   const [reps, setReps] = useState<Rep[]>([]);
-  const [salesRepId, setSalesRepId] = useState<number>(rep.id);
+  const [salesRepId, setSalesRepId] = useState<number>(user.id);
   const [orderNumber, setOrderNumber] = useState("");
   const [customerNumber, setCustomerNumber] = useState("");
   const [reasonCategory, setReasonCategory] = useState(REASON_OPTIONS[0]);
@@ -218,7 +219,7 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">RGA Portal</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Signed in as {rep.name} ({rep.rep_number}){" "}
+            Signed in as {user.name} ({user.rep_number}){" "}
             <button
               onClick={() => {
                 setShowChangePassword((s) => !s);
@@ -232,12 +233,14 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <a
-            href="/admin"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
-          >
-            Admin Mode
-          </a>
+          {user.roles.includes("admin") && (
+            <Link
+              href="/admin"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+            >
+              Admin Mode
+            </Link>
+          )}
           <button
             onClick={() => setShowNotifications((s) => !s)}
             className="relative rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"

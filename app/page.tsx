@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentAdmin, getCurrentRep } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function Home() {
-  const [rep, admin] = await Promise.all([getCurrentRep(), getCurrentAdmin()]);
-  if (rep) redirect("/rep");
-  if (admin) redirect("/admin");
+  const user = await getCurrentUser();
+  if (user) redirect(user.roles.includes("rep") ? "/rep" : "/admin");
 
   return (
     <div className="flex flex-1 items-center justify-center px-6">
@@ -16,20 +15,12 @@ export default async function Home() {
             Request and manage Return Goods Authorizations.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Link
-            href="/login"
-            className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-          >
-            Sales Rep Login
-          </Link>
-          <Link
-            href="/admin/login"
-            className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
-          >
-            Admin Login
-          </Link>
-        </div>
+        <Link
+          href="/login"
+          className="inline-block rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        >
+          Sign In
+        </Link>
       </div>
     </div>
   );

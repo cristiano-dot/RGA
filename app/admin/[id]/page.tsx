@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { getRgaWithItems } from "@/lib/rga";
 import { listActivity, markSeenByAdmin } from "@/lib/activity";
 import RgaDetail from "./RgaDetail";
@@ -9,8 +9,9 @@ export default async function AdminRgaDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) redirect("/admin/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!hasRole(user, "admin")) redirect("/rep");
 
   const { id } = await params;
   const rgaId = Number(id);

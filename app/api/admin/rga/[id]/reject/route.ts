@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
-import { getCurrentAdmin } from "@/lib/auth";
+import { getCurrentUser, hasRole } from "@/lib/auth";
 import { decideRga } from "@/lib/rga";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user || !hasRole(user, "admin")) {
+    return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
 
   const { id } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const note = typeof body?.note === "string" ? body.note.trim() : undefined;
 
   try {
-    const result = decideRga({
+    const result = await decideRga({
       rgaId: Number(id),
-      adminId: admin.id,
-      adminName: admin.name,
+      adminId: user.id,
+      adminName: user.name,
       approve: false,
       note,
     });

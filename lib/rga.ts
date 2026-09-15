@@ -1,5 +1,6 @@
 import { getDb, nextRgaNumber } from "./db";
 import { logActivity } from "./activity";
+import { emailUser } from "./notify";
 
 export type LineItemInput = {
   description: string;
@@ -91,7 +92,7 @@ const LIST_SELECT = `
         AND a.created_at > COALESCE(r.admin_last_seen_at, '0000-01-01T00:00:00.000Z')
     ) AS has_new_rep_comment
   FROM rgas r
-  JOIN sales_reps sr ON sr.id = r.sales_rep_id
+  JOIN users sr ON sr.id = r.sales_rep_id
   LEFT JOIN rga_line_items li ON li.rga_id = r.id
 `;
 
@@ -159,13 +160,13 @@ export function getRgaForRep(
   return result;
 }
 
-export function decideRga(params: {
+export async function decideRga(params: {
   rgaId: number;
   adminId: number;
   adminName: string;
   approve: boolean;
   note?: string;
-}): { status: RgaStatus; rgaNumber: string | null; salesRepId: number } {
+}): Promise<{ status: RgaStatus; rgaNumber: string | null; salesRepId: number }> {
   const db = getDb();
 
   const tx = db.transaction(() => {
@@ -206,8 +207,15 @@ export function decideRga(params: {
       message: params.note ?? null,
     });
 
-    return { status, rgaNumber, salesRepId: current.sales_rep_id };
+    return { status, rgaNumber, salesRepId: current.sales_rep_id, message };
   });
 
-  return tx();
+  const result = tx();
+  await emailUser(
+    result.salesRepId,
+    result.status === "approved" ? `RGA Approved — ${result.rgaNumber}` : "RGA Request Rejected",
+    result.message
+  );
+
+  return { status: result.status, rgaNumber: result.rgaNumber, salesRepId: result.salesRepId };
 }
