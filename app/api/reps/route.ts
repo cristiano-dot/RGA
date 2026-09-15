@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { listActiveReps } from "@/lib/reps";
 
 export async function GET() {
-  const db = getDb();
-  const reps = db
-    .prepare("SELECT id, rep_number, name FROM sales_reps ORDER BY rep_number ASC")
-    .all();
-  return NextResponse.json({ reps });
+  return NextResponse.json({ reps: listActiveReps() });
 }

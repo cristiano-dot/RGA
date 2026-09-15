@@ -28,6 +28,7 @@ export type RgaRow = {
   admin_last_seen_at: string | null;
   has_new_rep_comment: number;
   item_count: number;
+  items_summary: string;
   total_value: number;
 };
 
@@ -82,6 +83,7 @@ const LIST_SELECT = `
     r.order_number, r.customer_number, r.reason, r.shipping, r.status,
     r.created_at, r.decided_at, r.decision_note, r.admin_last_seen_at,
     COUNT(li.id) AS item_count,
+    COALESCE(GROUP_CONCAT(li.description, ', ' ORDER BY li.line_no), '') AS items_summary,
     COALESCE(SUM(li.quantity * li.price), 0) + r.shipping AS total_value,
     EXISTS (
       SELECT 1 FROM rga_activity a

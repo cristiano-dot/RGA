@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getDb } from "@/lib/db";
+import { findRepByEmail } from "@/lib/reps";
 import { createRepSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
@@ -10,13 +10,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
 
-  const db = getDb();
-  const rep = db
-    .prepare("SELECT * FROM sales_reps WHERE lower(email) = lower(?)")
-    .get(String(email).trim()) as { id: number; password_hash: string } | undefined;
+  const rep = findRepByEmail(String(email).trim());
 
   if (!rep || !bcrypt.compareSync(password, rep.password_hash)) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+  }
+
+  if (!rep.is_active) {
+    return NextResponse.json(
+      { error: "This account has been deactivated. Contact your admin." },
+      { status: 403 }
+    );
   }
 
   await createRepSession(rep.id);

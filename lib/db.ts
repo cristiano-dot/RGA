@@ -25,7 +25,8 @@ function createConnection(): Database.Database {
       rep_number TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL
+      password_hash TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS admins (
@@ -92,8 +93,9 @@ function createConnection(): Database.Database {
 // Demo seed data only — this file lives in the gitignored data/ directory and
 // is rebuilt from scratch on first run. If you already have a data/rga.db
 // from an earlier schema (shipping moved off line items, rep auth switched
-// between password/Google, or the new activity/comments table), delete the
-// data/ folder once so it re-seeds cleanly.
+// between password/Google, the activity/comments table, or the new
+// sales_reps.is_active column), delete the data/ folder once so it re-seeds
+// cleanly.
 function seed(db: Database.Database) {
   const repCount = db.prepare("SELECT COUNT(*) AS c FROM sales_reps").get() as { c: number };
   if (repCount.c === 0) {

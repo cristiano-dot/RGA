@@ -67,6 +67,14 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
+
   const [myRgas, setMyRgas] = useState<RgaListItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -171,6 +179,37 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
     loadNotifications();
   }
 
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords don't match.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordError(data.error ?? "Failed to change password.");
+        return;
+      }
+      setPasswordSuccess("Password updated.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   const unread = notifications.filter((n) => !n.is_read).length;
 
   return (
@@ -179,10 +218,26 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">RGA Portal</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Signed in as {rep.name} ({rep.rep_number})
+            Signed in as {rep.name} ({rep.rep_number}){" "}
+            <button
+              onClick={() => {
+                setShowChangePassword((s) => !s);
+                setPasswordError(null);
+                setPasswordSuccess(null);
+              }}
+              className="underline hover:text-slate-700 dark:hover:text-slate-200"
+            >
+              Change password
+            </button>
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <a
+            href="/admin"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+          >
+            Admin Mode
+          </a>
           <button
             onClick={() => setShowNotifications((s) => !s)}
             className="relative rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
@@ -202,6 +257,51 @@ export default function RepDashboard({ rep }: { rep: Rep }) {
           </button>
         </div>
       </header>
+
+      {showChangePassword && (
+        <div className="mb-8 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold">Change Password</h2>
+          <form onSubmit={handleChangePassword} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <input
+              type="password"
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+              placeholder="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            <input
+              type="password"
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+            <div className="sm:col-span-3">
+              {passwordError && <p className="mb-2 text-sm text-red-600">{passwordError}</p>}
+              {passwordSuccess && <p className="mb-2 text-sm text-emerald-600">{passwordSuccess}</p>}
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                {changingPassword ? "Saving..." : "Update Password"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showNotifications && (
         <div className="mb-8 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">

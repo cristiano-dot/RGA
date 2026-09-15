@@ -84,7 +84,7 @@ export async function getCurrentRep(): Promise<SalesRep | null> {
   if (!payload) return null;
   const db = getDb();
   const rep = db
-    .prepare("SELECT id, rep_number, name, email FROM sales_reps WHERE id = ?")
+    .prepare("SELECT id, rep_number, name, email FROM sales_reps WHERE id = ? AND is_active = 1")
     .get(payload.id) as SalesRep | undefined;
   return rep ?? null;
 }

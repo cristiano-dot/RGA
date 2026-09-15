@@ -16,18 +16,36 @@ type RgaRow = {
   status: "pending" | "approved" | "rejected";
   created_at: string;
   item_count: number;
+  items_summary: string;
   total_value: number;
   has_new_rep_comment: number;
 };
 
-const SORT_COLUMNS: { key: string; label: string }[] = [
-  { key: "created_at", label: "Submitted" },
-  { key: "status", label: "Status" },
-  { key: "reason", label: "Reason" },
-  { key: "item_count", label: "Items" },
-  { key: "total_value", label: "Total" },
-  { key: "rep_name", label: "Sales Rep" },
-];
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  dir,
+  onSort,
+}: {
+  label: string;
+  sortKey: string;
+  sort: string;
+  dir: "asc" | "desc";
+  onSort: (key: string) => void;
+}) {
+  return (
+    <th className="px-2 py-3">
+      <button
+        onClick={() => onSort(sortKey)}
+        className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
+      >
+        {label}
+        {sort === sortKey && <span>{dir === "asc" ? "▲" : "▼"}</span>}
+      </button>
+    </th>
+  );
+}
 
 function StatusBadge({ status }: { status: RgaRow["status"] }) {
   const styles = {
@@ -90,12 +108,26 @@ export default function AdminDashboard({ admin }: { admin: Admin }) {
             Signed in as {admin.name}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-3">
+          <a
+            href="/rep"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+          >
+            Rep Mode
+          </a>
+          <Link
+            href="/admin/reps"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+          >
+            Manage Reps
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900"
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
       <div className="mb-4 flex flex-wrap items-end gap-4">
@@ -140,24 +172,20 @@ export default function AdminDashboard({ admin }: { admin: Admin }) {
                 <th className="px-4 py-3">RGA #</th>
                 <th className="px-2 py-3">Order #</th>
                 <th className="px-2 py-3">Customer #</th>
-                {SORT_COLUMNS.map((col) => (
-                  <th key={col.key} className="px-2 py-3">
-                    <button
-                      onClick={() => toggleSort(col.key)}
-                      className="flex items-center gap-1 hover:text-slate-900 dark:hover:text-white"
-                    >
-                      {col.label}
-                      {sort === col.key && <span>{dir === "asc" ? "▲" : "▼"}</span>}
-                    </button>
-                  </th>
-                ))}
+                <SortHeader label="Submitted" sortKey="created_at" sort={sort} dir={dir} onSort={toggleSort} />
+                <SortHeader label="Status" sortKey="status" sort={sort} dir={dir} onSort={toggleSort} />
+                <SortHeader label="Reason" sortKey="reason" sort={sort} dir={dir} onSort={toggleSort} />
+                <th className="px-2 py-3">Items Returned</th>
+                <SortHeader label="Items" sortKey="item_count" sort={sort} dir={dir} onSort={toggleSort} />
+                <SortHeader label="Total" sortKey="total_value" sort={sort} dir={dir} onSort={toggleSort} />
+                <SortHeader label="Sales Rep" sortKey="rep_name" sort={sort} dir={dir} onSort={toggleSort} />
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {!loading && rgas.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                     No RGA requests match these filters.
                   </td>
                 </tr>
@@ -175,6 +203,9 @@ export default function AdminDashboard({ admin }: { admin: Admin }) {
                   </td>
                   <td className="max-w-[200px] truncate px-2 py-3" title={r.reason}>
                     {r.reason}
+                  </td>
+                  <td className="max-w-[220px] truncate px-2 py-3" title={r.items_summary}>
+                    {r.items_summary}
                   </td>
                   <td className="px-2 py-3">{r.item_count}</td>
                   <td className="px-2 py-3 tabular-nums">${r.total_value.toFixed(2)}</td>
